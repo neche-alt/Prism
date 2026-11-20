@@ -40,6 +40,16 @@ function NetworkBadge({ network }: { network: string }) {
   );
 }
 
+/**
+ * Shared selector for recently failed transactions. DecodeForm uses this to
+ * populate its "Recent failures" quick-fill dropdown, keeping both surfaces
+ * backed by the same session store.
+ */
+export function useRecentFailures(): HistoryEntry[] {
+  const { history } = useSessionStore();
+  return history;
+}
+
 interface TransactionRowProps {
   entry: HistoryEntry;
   onSelect: (entry: HistoryEntry) => void;

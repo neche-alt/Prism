@@ -1,16 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DiagnosticReport } from "@/lib/types";
+import { useRecentFailures, type HistoryEntry } from "@/components/shared/RecentTransactions";
 
 interface DecodeFormProps {
   onDecode: (report: DiagnosticReport | null) => void;
 }
 
+const SAMPLE_TX_HASH =
+  "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+
 export default function DecodeForm({ onDecode }: DecodeFormProps) {
+  const recentFailures: HistoryEntry[] = useRecentFailures();
   const [category, setCategory] = useState<string>("contract");
   const [code, setCode] = useState<string>("0");
+  const [txHash, setTxHash] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Pre-fill the hash from the URL when arriving from RecentTransactions
+  // (navigates to /decode?txHash=...).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const paramHash = params.get("txHash");
+    if (paramHash) {
+      setTxHash(paramHash);
+      const match = recentFailures.find(
+        (entry) => entry.txHash === paramHash
+      );
+      if (match) {
+        setCategory(match.errorCategory.toLowerCase());
+        setCode(String(match.report.error_code));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSelectFailure = (entry: HistoryEntry) => {
+    setTxHash(entry.txHash);
+    setCategory(entry.errorCategory.toLowerCase());
+    setCode(String(entry.report.error_code));
+  };
 
   const mockDecode = (cat: string, codeVal: number): DiagnosticReport => {
     switch (cat.toLowerCase()) {
@@ -203,6 +234,65 @@ export default function DecodeForm({ onDecode }: DecodeFormProps) {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Transaction hash + recent failures quick-fill */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Transaction Hash{" "}
+              <span className="text-slate-600 normal-case font-normal">
+                (optional)
+              </span>
+            </label>
+            <a
+              href={`https://stellar.expert/explorer/?q=${encodeURIComponent(
+                txHash
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              Find a hash on Stellar Explorer ↗
+            </a>
+          </div>
+          <input
+            type="text"
+            value={txHash}
+            onChange={(e) => setTxHash(e.target.value)}
+            placeholder={`e.g. ${SAMPLE_TX_HASH}`}
+            spellCheck={false}
+            autoComplete="off"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 font-mono text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-500 transition-colors"
+          />
+          {recentFailures.length > 0 && (
+            <div className="mt-3">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                Recent failures
+              </label>
+              <select
+                value=""
+                onChange={(e) => {
+                  const entry = recentFailures.find(
+                    (f) => f.id === e.target.value
+                  );
+                  if (entry) handleSelectFailure(entry);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-slate-200 focus:outline-none focus:border-violet-500 transition-colors"
+              >
+                <option value="" disabled>
+                  Select a recent failed transaction to autofill…
+                </option>
+                {recentFailures.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.txHash.slice(0, 10)}…
+                    {entry.txHash.slice(-6)} · {entry.errorName} ·{" "}
+                    {entry.network}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
