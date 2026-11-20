@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import CommandPalette from "@/components/shared/CommandPalette";
+import KeyboardShortcutsHelp from "@/components/shared/KeyboardShortcutsHelp";
 
 export const metadata: Metadata = {
   title: "Grat — Soroban Transaction Debugger",
@@ -14,7 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <CommandPalette />
+        <KeyboardShortcutsHelp />
+      </body>
     </html>
   );
 }
